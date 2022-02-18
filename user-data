@@ -1,0 +1,112 @@
+#cloud-config
+# Helpful sights:
+#        https://louwrentius.com/understanding-the-ubuntu-2004-lts-server-autoinstaller.html
+#        https://www.edwardssite.com/cloud-init
+#        https://ubuntu.com/server/docs/install/autoinstall-referencie#commandlist
+#        https://www.convertunits.com/from/bytes/to/MB
+autoinstall:
+  version: 1
+  ineractive-sections:
+  keyboard: {layout: 'us', variant: ''}
+  locale: en_US.UTF-8
+
+  # Identification  
+  identity:
+    hostname: MyUbuntuServer
+    password: "$6$exDY1mhS4KUYCE/2$zmn9ToZwTKLhCw.b4/b.ZRTIZM30JZ4QrOQ2aOXJ8yk96xpcCof0kxKwuX1kqLG/ygbJ1f8wxED22bTL4F46P0"
+    username: ubuntu
+  ssh:
+    allow-pw: true
+    install-server: true
+
+  # Storage Information
+  storage:
+    config:
+    # Find Disk, Partition Boot/EFI, and wipe clean (268435456 = 256MB, 536870912 = 512MB)
+    - {grub_device: true, id: disk-sda, name: '', path: /dev/sda, preserve: false, ptable: gpt, type: disk, wipe: superblock-recursive}  
+    - {device: disk-sda, flag: bios_grub, grub_device: false, id: partition-0, number: 1, preserve: false, size: 1048576, type: partition}  
+    - {device: disk-sda, flag: '', grub_device: false, id: partition-1, number: 2, preserve: false, size: 268435456, type: partition, wipe: superblock}  
+    - {fstype: ext4, id: format-0, preserve: false, type: format, volume: partition-1}  
+    - {device: disk-sda, flag: '', grub_device: false, id: partition-2, number: 3, preserve: false, size: 268435456, type: partition, wipe: superblock}  
+    - {fstype: ext4, id: format-1, preserve: false, type: format, volume: partition-2}  
+     
+    # Create SWAP space and mount it (2147483648 = 2GB)
+    - {device: disk-sda, flag: swap, grub_device: false, id: partition-3, number: 4, preserve: false, size: 2147483648, type: partition, wipe: superblock}  
+    - {fstype: swap, id: format-2, preserve: false, type: format, volume: partition-3}  
+    - {device: format-2, id: mount-2, path: '', type: mount}  
+    
+    # Create LVM Group from remaining disk space
+    - {device: disk-sda, flag: '', grub_device: false, id: partition-4, number: 5, preserve: false, size: -1, type: partition, wipe: superblock}  
+    - devices: 
+      - partition-4
+      id: lvm_volgroup-0
+      name: ubuntu-vg
+      preserve: false
+      type: lvm_volgroup
+     
+    # Create LVM Filesystems
+    # /
+    - {id: lvm_partition-0, name: FS_root, preserve: false, size: 4290772992B, type: lvm_partition, volgroup: lvm_volgroup-0}  
+    - {fstype: ext4, id: format-5, preserve: false, type: format, volume: lvm_partition-0}  
+    # /home
+    - {id: lvm_partition-1, name: FS_home, preserve: false, size: 2147483648B, type: lvm_partition, volgroup: lvm_volgroup-0}  
+    - {fstype: ext4, id: format-6, preserve: false, type: format, volume: lvm_partition-1}  
+    # /var
+    - {id: lvm_partition-2, name: FS_var, preserve: false, size: 2147483648B, type: lvm_partition, volgroup: lvm_volgroup-0}  
+    - {fstype: ext4, id: format-7, preserve: false, type: format, volume: lvm_partition-2}  
+    # /var/log
+    - {id: lvm_partition-3, name: FS_var_log, preserve: false, size: 2147483648B, type: lvm_partition, volgroup: lvm_volgroup-0}  
+    - {fstype: ext4, id: format-8, preserve: false, type: format, volume: lvm_partition-3}  
+    # /opt
+    - {id: lvm_partition-4, name: FS_opt, preserve: false, size: 1073741824B, type: lvm_partition, volgroup: lvm_volgroup-0}
+    - {fstype: ext4, id: format-9, preserve: false, type: format, volume: lvm_partition-4}
+    # /tmp
+    - {id: lvm_partition-5, name: FS_tmp, preserve: false, size: 1073741824B, type: lvm_partition, volgroup: lvm_volgroup-0}
+    - {fstype: ext4, id: format-10, preserve: false, type: format, volume: lvm_partition-5}
+    # /usr
+    - {id: lvm_partition-6, name: FS_usr, preserve: false, size: 4290772992B, type: lvm_partition, volgroup: lvm_volgroup-0}  
+    - {fstype: ext4, id: format-11, preserve: false, type: format, volume: lvm_partition-6}  
+
+   
+    # Mount Storage devices  
+    - {device: format-0, id: mount-0, path: /boot, type: mount}  
+    - {device: format-1, id: mount-1, path: /boot/efi, type: mount}
+    - {device: format-5, id: mount-5, path: /, type: mount}  
+    - {device: format-6, id: mount-6, path: /home, type: mount}  
+    - {device: format-7, id: mount-7, path: /var, type: mount}  
+    - {device: format-8, id: mount-8, path: /var/log, type: mount} 
+    - {device: format-9, id: mount-8, path: /opt, type: mount} 
+    - {device: format-10, id: mount-9, path: /tmp, type: mount} 
+    - {device: format-11, id: mount-10, path: /usr, type: mount} 
+
+  # Post-install packages to download and include
+  packages:
+    - openvpn
+    - openconnect
+    - build-essential
+    - gcc
+    - make
+    - perl
+    - dkms
+    - xterm
+    - hwinfo
+    - vim
+    - curl
+    - wget
+    - openssh-server
+    - xdotool
+    - net-tools
+    - ifupdown
+    - virtualbox-guest-additions-iso
+ 
+  # Commands to complete after installation
+  late-commands:
+    - curtin in-target --target=/target -- apt update           
+    - curtin in-target --target=/target -- apt upgrade -y
+
+  # Process to restart the server after build completes, and allow root ssh access
+  user-data:
+    disable_root: false
+    power_state:
+      mode: reboot
+      condition: true
