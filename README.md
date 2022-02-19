@@ -51,7 +51,7 @@ ssh-keygen
 ## Default Credentials
 <ul>
   <li>Username: myuser</li>
-  <li>Password: ChangeMe</li>
+  <li>Password: Whatever you type in, when prompted</li>
   <li>Username: ansible</li>
   <li>Password: ChangeMe</li>
   <ul>
