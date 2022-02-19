@@ -61,10 +61,14 @@ ssh-keygen
 
 ## Docker Installation
 <ul>
-  <li></li>
+  <li>Docker and Docker Compose are installed by default, unless you choose not to install it</li>
+  <li>Docker and Docker Compose installation script/files can be found under /DockerInstall/ once installation is complete</li>
 </ul>
 
   ![image](https://user-images.githubusercontent.com/13524582/154775732-c0f7627c-4350-42d4-b288-e5dbc076f8fa.png)
+
+## Using the seed-&#60;servername&#62;.iso file
+
 
 ## Archive Information Below
 <s>To create a new seed.iso file:
