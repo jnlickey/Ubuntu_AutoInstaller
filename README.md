@@ -63,9 +63,10 @@ ssh-keygen
 
 ## Docker Installation
 <ul>
-  <li>Docker and Docker Compose are installed by default, unless you choose not to install it</li>
+  <li>Docker and Docker Compose are installed by default, unless you choose not to install it when running CreateSeedISOwDocker.sh</li>
   <li>Docker and Docker Compose installation script/files can be found under /DockerInstall/ once installation is complete</li>
-  <ul><li>NOTE: The Docker install script will reboot the system</li></ul>
+    <ul><li>NOTE: The Docker install script will reboot the system</li></ul>
+  <li>Docker Compose files can be found under /docker-services/&#60;DockerApp&#62;</li>
 </ul>
 
 ## Building a Virtual machine using the seed-&#60;servername&#62;.iso file
@@ -80,11 +81,34 @@ ssh-keygen
     <li>CD/DVD drive 1: UbuntuServer.iso</li>
     <li>CD/DVD drive 2: seed-&#60;servername&#62;.iso</li>
   <ul>
+  <li>Boot the server</li>
+  <li>At the prompt to continue using autoinstall, type 'yes' and press enter</li>
+  <li>The server should then continue to be setup per the answer file, and will reboot</li>
+  <li>After the reboot, it should come up and you should be able to login to it with the username that you created when running the CreateSeedISOwDocker.sh scipt or the ansible account.</li>
 </ol>
     
 ## Troubleshooting
 <ul>
   <li>If the system does not boot the first time, switch the ISO files in the CD/DVD drives</li>
+  <li>If you are unable to login to the server after the reboot, you will need to enter single user mode:</li>
+    <ol>
+      <li>Reboot the server</li>
+      <li>Press 'ESC' quickly as the server reboots (You may need to press it multiple times)</li>
+      <li>At the Ubuntu GRUB menu, press 'e' to edit the GRUB Boot options</li>
+      <li>Scroll through the list until you find a line starting with 'linux' and is indented</li>
+      <li>Goto the end of that 'linux' line, add a space and enter 'init=/bin/bash'</li>
+      <li>Press F10 to continue booting the system into single user mode</li>
+      <li>At the root prompt enter the following:</li>
+        <ul>
+          <li>mount -o remount,rw /</li>
+          <li>passwd root</li>
+          <li>Input a password for the root account, and confirm it, by entering the same password again</li>
+          <li>reboot -f</li>
+        </ul>
+      <li>Once the server comes back up, login as the root account, with the password that you just setup.</li>
+      <li>You will then need to manually re-create the new user and ansible accounts that were suppose to be added via the answer file</li>
+      <li>You should also manually re-run the /DockerInstall/DockerInstall.sh script to install Docker/Docker Compose. NOTE: this script WILL reboot the server</li>
+    </ol>
 </ul>
     
 ## Archive Information Below
