@@ -80,7 +80,7 @@ ssh-keygen
   <ul>
     <li>CD/DVD drive 1: UbuntuServer.iso</li>
     <li>CD/DVD drive 2: seed-&#60;servername&#62;.iso</li>
-  <ul>
+  </ul>
   <li>Boot the server</li>
   <li>At the prompt to continue using autoinstall, type 'yes' and press enter</li>
   <li>The server should then continue to be setup per the answer file, and will reboot</li>
