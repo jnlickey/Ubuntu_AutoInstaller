@@ -10,12 +10,14 @@ This script was designed in order to ease the installation process of Ubuntu ser
       <li>FIRST RUN ONLY - When prompted to build the ISO file at the end, say "no"</li>
     </ul>
   
-  <li>The script when ran will auto generated a directory named /home/&#60;user&#62;/www, and an environment variable file /home/&#60;user&#62;/seed.env</li>
+  <li>The script when ran will auto generate a directory named /home/&#60;user&#62;/www, and an environment variable file /home/&#60;user&#62;/www/seed.env</li>
     <ul>
       <li>/home/&#60;user&#62;/www/ - is the directory that stores the data that is used to create the seed-&#60;servername&#62;.iso file</li>
       <li>/home/&#60;user&#62;/www/seed.env - is a file that contains default variables that can be modified for future seed-&#60;servername&#62;.iso file creations</li>
     </ul>  
 </ol>
+
+   ![image](https://user-images.githubusercontent.com/13524582/154775732-c0f7627c-4350-42d4-b288-e5dbc076f8fa.png)
 
 NOTE: It is strongly recommended that you modify/change the variable `AnsibleHASH=''` from the default in /home/&#60;user&#62;/www/seed.env, by running the following command:
 
@@ -63,13 +65,28 @@ ssh-keygen
 <ul>
   <li>Docker and Docker Compose are installed by default, unless you choose not to install it</li>
   <li>Docker and Docker Compose installation script/files can be found under /DockerInstall/ once installation is complete</li>
+  <ul><li>NOTE: The Docker install script will reboot the system</li></ul>
 </ul>
 
-  ![image](https://user-images.githubusercontent.com/13524582/154775732-c0f7627c-4350-42d4-b288-e5dbc076f8fa.png)
-
-## Using the seed-&#60;servername&#62;.iso file
-
-
+## Building a Virtual machine using the seed-&#60;servername&#62;.iso file
+<ol>
+  <li>Download latest Ubuntu Server: https://ubuntu.com/download/server</li>
+  <li>Download WinSCP: https://winscp.net/download/WinSCP-5.19.5-Setup.exe</li>
+    <ul>
+      <li>Tool used for transferring files between linux host (where CreateSeedISOwDocker.sh script is ran) and a Windows host where the virtual environment might be located. (e.g. VirtualBox, VMware Workstation Player, VMware Workstation, or others)</li>
+    </ul>
+  <li>When building the virtual machine using the seed-&#60;servername&#62;.iso file it requires you to have two (2) CD/DVD drives.</li>
+  <ul>
+    <li>CD/DVD drive 1: UbuntuServer.iso</li>
+    <li>CD/DVD drive 2: seed-&#60;servername&#62;.iso</li>
+  <ul>
+</ol>
+    
+## Troubleshooting
+<ul>
+  <li>If the system does not boot the first time, switch the ISO files in the CD/DVD drives</li>
+</ul>
+    
 ## Archive Information Below
 <s>To create a new seed.iso file:
 1) Create a www directory under your home:  mkdir /home/$USER/www
