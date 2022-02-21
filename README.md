@@ -6,14 +6,14 @@ This script was designed in order to ease the installation process of Ubuntu ser
   <li>Download and Run CreateSeedISOwDocker.sh</li>   
     <ul>
       <li>FIRST RUN ONLY - The script will prompt to download any missing packages that are required, if they are not already installed on your Linux system</li>
-      <li>FIRST RUN ONLY - Select all of the defaults</li>
+      <li>FIRST RUN ONLY - Select all of the defaults (Default settings appear inside square brackets - [  ] )</li>
       <li>FIRST RUN ONLY - When prompted to build the ISO file at the end, say "no"</li>
     </ul>
   
   <li>The script when ran will auto generate a directory named /home/&#60;user&#62;/www, and an environment variable file /home/&#60;user&#62;/www/seed.env</li>
     <ul>
       <li>/home/&#60;user&#62;/www/ - is the directory that stores the data that is used to create the seed-&#60;servername&#62;.iso file</li>
-      <li>/home/&#60;user&#62;/www/seed.env - is a file that contains default variables that can be modified for future seed-&#60;servername&#62;.iso file creations</li>
+      <li>/home/&#60;user&#62;/www/seed.env - is a file that contains default variables that can be modified for future seed-&#60;servername&#62;.iso file creations, or simply re-used</li>
     </ul>  
 </ol>
 
