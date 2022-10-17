@@ -96,7 +96,7 @@ function NETWORK () {
 # Set's up Docker Installation script
 function DOCKERINSTALL () {
 	DOCKERAPP=${1}
-        result=$(ping -c1 $(echo ${DNS}| cut -d"," -f1) | grep received | awk '{print $4}')
+        result=$(ping -c1 $(echo ${DNSservers}| cut -d"," -f1) | grep received | awk '{print $4}')
         if [[ ${result} = "1" ]];then
              # Builds DockerInstall.sh script
              if [[ ! -f ${HOME_DIR}/DockerInstall.sh ]];then
