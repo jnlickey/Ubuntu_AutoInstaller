@@ -24,20 +24,41 @@ function PASSWORD () {
 
 # Setup Network Configuration
 function NETWORK () {
-	# Create Network template file, always needed
-	if [[ ! -f ${HOME_DIR}/01-config.yaml-template ]];then
-		# Create template for network configuation
-		touch ${HOME_DIR}/01-config.yaml-template
-		echo "network:" >> ${HOME_DIR}/01-config.yaml-template
-		echo "  version: 2" >> ${HOME_DIR}/01-config.yaml-template
-		echo "  ethernets:" >> ${HOME_DIR}/01-config.yaml-template
-		echo "    INTERFACE:" >> ${HOME_DIR}/01-config.yaml-template
-		echo "      addresses: [IP/24]" >> ${HOME_DIR}/01-config.yaml-template
-		echo "      gateway4: GATEWAY" >> ${HOME_DIR}/01-config.yaml-template
-		echo "      nameservers:" >> ${HOME_DIR}/01-config.yaml-template
-		echo "        search: [example.com]" >> ${HOME_DIR}/01-config.yaml-template
-		echo "        addresses: [8.8.8.8, 127.0.0.1]" >> ${HOME_DIR}/01-config.yaml-template
-	fi
+    if [[ ${OS_version} -le 20 ]];then
+        # Create Network template file, always needed
+        if [[ ! -f ${HOME_DIR}/01-config.yaml-template ]];then
+            # Create template for network configuation
+            touch ${HOME_DIR}/01-config.yaml-template
+            echo "network:" >> ${HOME_DIR}/01-config.yaml-template
+            echo "  version: 2" >> ${HOME_DIR}/01-config.yaml-template
+            echo "  ethernets:" >> ${HOME_DIR}/01-config.yaml-template
+            echo "    INTERFACE:" >> ${HOME_DIR}/01-config.yaml-template
+            echo "      addresses: [IP/24]" >> ${HOME_DIR}/01-config.yaml-template
+            echo "      gateway4: GATEWAY" >> ${HOME_DIR}/01-config.yaml-template
+            echo "      nameservers:" >> ${HOME_DIR}/01-config.yaml-template
+            echo "        search: [${DOMAIN}]" >> ${HOME_DIR}/01-config.yaml-template
+            echo "        addresses: [${DNSservers}]" >> ${HOME_DIR}/01-config.yaml-template
+        fi
+    else
+        # Create Network template file, always needed
+        if [[ ! -f ${HOME_DIR}/01-config.yaml-template ]];then
+            # Create template for network configuation
+            touch ${HOME_DIR}/01-config.yaml-template
+            echo "network:" >> ${HOME_DIR}/01-config.yaml-template
+            echo "  version: 2" >> ${HOME_DIR}/01-config.yaml-template
+            echo "  ethernets:" >> ${HOME_DIR}/01-config.yaml-template
+            echo "    INTERFACE:" >> ${HOME_DIR}/01-config.yaml-template
+            echo "      dhcp4: false" >> ${HOME_DIR}/01-config.yaml-template
+            echo "      dhcp6: false" >> ${HOME_DIR}/01-config.yaml-template
+            echo "      addresses: [IP/24]" >> ${HOME_DIR}/01-config.yaml-template
+            echo "      routes:" >> ${HOME_DIR}/01-config.yaml-template
+            echo "          - to: default" >> ${HOME_DIR}/01-config.yaml-template
+            echo "            via: GATEWAY" >> ${HOME_DIR}/01-config.yaml-template
+            echo "      nameservers:" >> ${HOME_DIR}/01-config.yaml-template
+            echo "        search: [${DOMAIN}]" >> ${HOME_DIR}/01-config.yaml-template
+            echo "        addresses: [${DNSservers}]" >> ${HOME_DIR}/01-config.yaml-template
+        fi
+    fi
 	
 	NEW_SERVER_NAME="${1}"
 	VLOCATION="${2}"
@@ -58,56 +79,70 @@ function NETWORK () {
 	else
 		printf "${RED}Not a VALID IP address!{NC}"
 	fi
+
+    # Network check script for Ubuntu MOTD
+    DNS1=$(echo ${DNSservers} | cut -d, -f1)
+    DNS2=$(echo ${DNSservers} | cut -d, -f2)
+    echo "#!/bin/bash" > ${HOME_DIR}/99-custom-network-test
+    echo "result1=\$(ping -c1 $DNS1 | grep received | awk '{print \$4}')" >> ${HOME_DIR}/99-custom-network-test
+    echo "result2=\$(ping -c1 $DNS2 | grep received | awk '{print \$4}')" >> ${HOME_DIR}/99-custom-network-test
+    echo "if [[ ! \${result1} = \"1\" ]] || [[ ! \${result2} = \"1\" ]];then" >> ${HOME_DIR}/99-custom-network-test
+	echo "    echo \"     *** NETWORK CONNECTION DOWN ***     \"" >> ${HOME_DIR}/99-custom-network-test
+    echo "fi" >> ${HOME_DIR}/99-custom-network-test
+    chmod 775 ${HOME_DIR}/99-custom-network-test
 }
 
 # Set's up Docker Installation script
 function DOCKERINSTALL () {
-	DOCKERAPP=${1}
-	# Builds DockerInstall.sh script
-	if [[ ! -f ${HOME_DIR}/DockerInstall.sh ]];then
-		touch ${HOME_DIR}/DockerInstall.sh
-		chmod 750 ${HOME_DIR}/DockerInstall.sh
-		echo -ne "#!/bin/bash\n\n" >> ${HOME_DIR}/DockerInstall.sh
-		echo -ne "#\n# Install packages for Docker\n#\n" >> ${HOME_DIR}/DockerInstall.sh
-		echo "sudo apt install apt-transport-https ca-certificates gnupg lsb-release -y" >> ${HOME_DIR}/DockerInstall.sh
-		echo -ne "\n#\n# Install Docker\n#\n" >> ${HOME_DIR}/DockerInstall.sh
-		echo "sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg" >> ${HOME_DIR}/DockerInstall.sh
-		echo 'sudo echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null' >> ${HOME_DIR}/DockerInstall.sh
-		echo "sudo apt update" >> ${HOME_DIR}/DockerInstall.sh
-		echo "sudo apt install docker-ce docker-ce-cli containerd.io -y" >> ${HOME_DIR}/DockerInstall.sh
-		echo -ne "\n#\n# Install Docker Compose (From Binary)\n#\n" >> ${HOME_DIR}/DockerInstall.sh
-		echo "sudo curl -L \"https://github.com/docker/compose/releases/download/1.29.2/docker-compose-\$(uname -s)-\$(uname -m)\" -o /usr/local/bin/docker-compose" >> ${HOME_DIR}/DockerInstall.sh
-		echo "sudo chmod +x /usr/local/bin/docker-compose" >> ${HOME_DIR}/DockerInstall.sh
-		echo "sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose" >> ${HOME_DIR}/DockerInstall.sh
-		echo -ne "\n#\n# Once you have docker and docker-compose installed, you can make a directory\n#\n" >> ${HOME_DIR}/DockerInstall.sh
-		echo "sudo mkdir /docker-services && sudo chmod 777 /docker-services" >> ${HOME_DIR}/DockerInstall.sh
-		echo -ne "\n#\n# After that you can make a directory in there named the same\n# as the appliation that will be running:\n#\n" >> ${HOME_DIR}/DockerInstall.sh
-		echo "sudo mkdir -p /docker-services/${DOCKERAPP}" >> ${HOME_DIR}/DockerInstall.sh
-		echo "sudo touch /docker-services/${DOCKERAPP}/docker-compose.yml" >> ${HOME_DIR}/DockerInstall.sh
-		echo -ne "\n" >> ${HOME_DIR}/DockerInstall.sh
-		echo -ne "sudo cp /DockerInstall/daemon.json /etc/docker/daemon.json\n" >> ${HOME_DIR}/DockerInstall.sh
-		echo -ne "sudo rm -rf /etc/cron.d/docker-install\n" >> ${HOME_DIR}/DockerInstall.sh
-		echo "reboot" >> ${HOME_DIR}/DockerInstall.sh
-		echo "exit 0" >> ${HOME_DIR}/DockerInstall.sh
-	fi
-	
-
-	# Builds daemon.json file
-	if [[ ! -f ${HOME_DIR}/daemon.json ]];then
-		touch ${HOME_DIR}/daemon.json
-		echo '{' >> ${HOME_DIR}/daemon.json
-		echo '  "default-address-pools": [' >> ${HOME_DIR}/daemon.json 
-		echo '      {"base": "10.241.0.0/16", "size":24}' >> ${HOME_DIR}/daemon.json
-		echo '  ],' >> ${HOME_DIR}/daemon.json
-		echo '  "log-driver": "json-file",' >> ${HOME_DIR}/daemon.json
-		echo '  "log-opts": {' >> ${HOME_DIR}/daemon.json
-		echo '    "max-size": "300m",' >> ${HOME_DIR}/daemon.json
-		echo '    "max-file": "3",' >> ${HOME_DIR}/daemon.json
-		echo '    "labels": "production_status",' >> ${HOME_DIR}/daemon.json
-		echo '    "env": "os"' >> ${HOME_DIR}/daemon.json
-		echo '  }' >> ${HOME_DIR}/daemon.json
-		echo '}' >> ${HOME_DIR}/daemon.json
-	fi
+    DOCKERAPP=${1}
+    result=$(ping -c1 $(echo ${DNSservers}| cut -d"," -f1) | grep received | awk '{print $4}')
+    if [[ ${result} = "1" ]];then
+        # Builds DockerInstall.sh script
+        if [[ ! -f ${HOME_DIR}/DockerInstall.sh ]];then
+            touch ${HOME_DIR}/DockerInstall.sh
+            chmod 750 ${HOME_DIR}/DockerInstall.sh
+            echo -ne "#!/bin/bash\n\n" >> ${HOME_DIR}/DockerInstall.sh
+            echo -ne "#\n# Install packages for Docker\n#\n" >> ${HOME_DIR}/DockerInstall.sh
+            echo "sudo apt install apt-transport-https ca-certificates gnupg lsb-release -y" >> ${HOME_DIR}/DockerInstall.sh
+            echo -ne "\n#\n# Install Docker\n#\n" >> ${HOME_DIR}/DockerInstall.sh
+            echo "sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg" >> ${HOME_DIR}/DockerInstall.sh
+            echo 'sudo echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null' >> ${HOME_DIR}/DockerInstall.sh
+            echo "sudo apt update" >> ${HOME_DIR}/DockerInstall.sh
+            echo "sudo apt install docker-ce docker-ce-cli containerd.io -y" >> ${HOME_DIR}/DockerInstall.sh
+            echo -ne "\n#\n# Install Docker Compose (From Binary)\n#\n" >> ${HOME_DIR}/DockerInstall.sh
+            echo "sudo curl -L \"https://github.com/docker/compose/releases/download/1.29.2/docker-compose-\$(uname -s)-\$(uname -m)\" -o /usr/local/bin/docker-compose" >> ${HOME_DIR}/DockerInstall.sh
+            #echo "sudo curl -L \"https://github.com/docker/compose/releases/download/2.11.2/docker-compose-\$(uname -s)-\$(uname -m)\" -o /usr/local/bin/docker-compose" >> ${HOME_DIR}/DockerInstall.sh
+            echo "sudo chmod +x /usr/local/bin/docker-compose" >> ${HOME_DIR}/DockerInstall.sh
+            echo "sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose" >> ${HOME_DIR}/DockerInstall.sh
+            echo -ne "\n#\n# Once you have docker and docker-compose installed, you can make a directory\n#\n" >> ${HOME_DIR}/DockerInstall.sh
+            echo "sudo mkdir /docker-services && sudo chmod 777 /docker-services" >> ${HOME_DIR}/DockerInstall.sh
+            echo -ne "\n#\n# After that you can make a directory in there named the same\n# as the appliation that will be running:\n#\n" >> ${HOME_DIR}/DockerInstall.sh
+            echo "sudo mkdir -p /docker-services/${DOCKERAPP}" >> ${HOME_DIR}/DockerInstall.sh
+            echo "sudo touch /docker-services/${DOCKERAPP}/docker-compose.yml" >> ${HOME_DIR}/DockerInstall.sh
+            echo -ne "\n" >> ${HOME_DIR}/DockerInstall.sh
+            echo -ne "sudo cp /DockerInstall/daemon.json /etc/docker/daemon.json\n" >> ${HOME_DIR}/DockerInstall.sh
+            echo -ne "sudo rm -rf /etc/cron.d/docker-install\n" >> ${HOME_DIR}/DockerInstall.sh
+            echo "reboot" >> ${HOME_DIR}/DockerInstall.sh
+            echo "exit 0" >> ${HOME_DIR}/DockerInstall.sh
+        fi
+        
+        # Builds daemon.json file
+        if [[ ! -f ${HOME_DIR}/daemon.json ]];then
+            touch ${HOME_DIR}/daemon.json
+            echo '{' >> ${HOME_DIR}/daemon.json
+            echo '  "default-address-pools": [' >> ${HOME_DIR}/daemon.json 
+            echo '      {"base": "10.241.0.0/16", "size":24}' >> ${HOME_DIR}/daemon.json
+            echo '  ],' >> ${HOME_DIR}/daemon.json
+            echo '  "log-driver": "json-file",' >> ${HOME_DIR}/daemon.json
+            echo '  "log-opts": {' >> ${HOME_DIR}/daemon.json
+            echo '    "max-size": "300m",' >> ${HOME_DIR}/daemon.json
+            echo '    "max-file": "3",' >> ${HOME_DIR}/daemon.json
+            echo '    "labels": "production_status",' >> ${HOME_DIR}/daemon.json
+            echo '    "env": "os"' >> ${HOME_DIR}/daemon.json
+            echo '  }' >> ${HOME_DIR}/daemon.json
+            echo '}' >> ${HOME_DIR}/daemon.json
+        fi
+    fi
 }
 
 function Build_USER-DATA(){
@@ -250,18 +285,19 @@ function Create_SEED() {
 	# Create the seed.iso file
 	# cloud-localds ${HOME_DIR}/seed.iso ${HOME_DIR}/user-data ${HOME_DIR}/meta-data
 	printf "${YEL}Create seed.iso file in${NC} ${HOME_DIR} ${YEL}(Y|N):${NC} "; read ANS
+    FILES2PKG="${HOME_DIR}/user-data ${HOME_DIR}/meta-data ${HOME_DIR}/DockerInstall.sh ${HOME_DIR}/daemon.json ${HOME_DIR}/01-config.yaml ${HOME_DIR}/99-custom-network-test"
 	if [[ ${ANS} =~ [Y|y][E|e][S|s]|[Y|y] ]];then
 		if [[ ${DOCKER} =~ Y|y ]];then
 			if [[ ${LOCATION} =~ vb|VB ]];then
-				mkisofs -V cidata -r -o ${HOME_DIR}/seed-${NEW_SERVER_NAME}-vb.iso ${HOME_DIR}/user-data ${HOME_DIR}/meta-data ${HOME_DIR}/DockerInstall.sh ${HOME_DIR}/daemon.json ${HOME_DIR}/01-config.yaml 2>/dev/null
+				mkisofs -V cidata -r -o ${HOME_DIR}/seed-${NEW_SERVER_NAME}-vb.iso ${HOME_DIR}/user-data ${HOME_DIR}/meta-data ${HOME_DIR}/DockerInstall.sh ${HOME_DIR}/daemon.json ${HOME_DIR}/01-config.yaml ${HOME_DIR}/99-custom-network-test 2>/dev/null
 			else
-				mkisofs -V cidata -r -o ${HOME_DIR}/seed-${NEW_SERVER_NAME}-vm.iso ${HOME_DIR}/user-data ${HOME_DIR}/meta-data ${HOME_DIR}/DockerInstall.sh ${HOME_DIR}/daemon.json ${HOME_DIR}/01-config.yaml 2>/dev/null
+				mkisofs -V cidata -r -o ${HOME_DIR}/seed-${NEW_SERVER_NAME}-vm.iso ${FILES2PKG} 2>/dev/null
 			fi
 		else
 			if [[ ${LOCATION} =~ vb|VB ]];then
-				mkisofs -V cidata -r -o ${HOME_DIR}/seed-${NEW_SERVER_NAME}-vb.iso ${HOME_DIR}/user-data ${HOME_DIR}/meta-data ${HOME_DIR}/01-config.yaml 2>/dev/null
+				mkisofs -V cidata -r -o ${HOME_DIR}/seed-${NEW_SERVER_NAME}-vb.iso ${FILES2PKG} 2>/dev/null
 			else
-				mkisofs -V cidata -r -o ${HOME_DIR}/seed-${NEW_SERVER_NAME}-vm.iso ${HOME_DIR}/user-data ${HOME_DIR}/meta-data ${HOME_DIR}/01-config.yaml 2>/dev/null
+				mkisofs -V cidata -r -o ${HOME_DIR}/seed-${NEW_SERVER_NAME}-vm.iso ${FILES2PKG} 2>/dev/null
 			fi
 		fi
 	elif [[ ${ANS} = '' ]];then
@@ -285,50 +321,51 @@ function Create_DIR(){
 function Default_Config(){
 	# Setup NETWORKING with netplan config
 	echo -ne "    - cp /tmp/mnt/01-config.yaml /target/etc/netplan/01-config.yaml\n" >> ${HOME_DIR}/user-data
-
+    # Check NETWORKING via MOTD
+    echo -ne "    - cp /tmp/mnt/99-custom-network-test /target/etc/update-motd.d/99-custom-network-test\n" >> ${HOME_DIR}/user-data
 	# Adding default DNS entries
 	DNS1="$(echo ${DNSservers} | cut -d, -f1)"
 	DNS2="$(echo ${DNSservers} | cut -d, -f2)"
 	Domains="$(echo ${DOMAIN} | tr ',' ' ')"
 	printf "    - sed -i 's/^#DNS\=/DNS\=/g;s/^#Fall/Fall/g;s/^#Domains\=/Domains\=/g' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
-    	printf "    - sed -i '/^DNS\=/ s/\$/${DNS1}/' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
-    	printf "    - sed -i '/^Fall.*\=/ s/\$/${DNS2}/' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
-    	printf "    - sed -i '/^Domains\=/ s/\$/${Domains}/' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
+    printf "    - sed -i '/^DNS\=/ s/\$/${DNS1}/' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
+    printf "    - sed -i '/^Fall.*\=/ s/\$/${DNS2}/' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
+    printf "    - sed -i '/^Domains\=/ s/\$/${Domains}/' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
 
-    	# Adding Ansible user
+   	# Adding Ansible user
 	# Adding Ansible user to sudo
 	printf "    - echo \"ansible ALL=(ALL:ALL) NOPASSWD:ALL\" > /target/etc/sudoers.d/ansible_admin\n" >> ${HOME_DIR}/user-data
 	printf "    - chmod 0440 /target/etc/sudoers.d/ansible_admin\n" >> ${HOME_DIR}/user-data
 	# Pulled from .pub for the Ansible user
 	if [[ ${AnsibleSSHKEY} = '' ]];then
-		AnsibleSSHKEY='ssh-rsa somerandomcharacterssomerandomcharacterssomerandomcharacterssomerandomcharacters ansible@someserver'
+		AnsibleSSHKEY="ssh-rsa somerandomcharacterssomerandomcharacterssomerandomcharacterssomerandomcharacters ansible@something"
 	fi
 	# Used read PASS;openssl passwd -6 $PASS to create hash
 	if [[ ${AnsibleHASH} = '' ]];then
-		AnsibleHASH='\$6\$Zx1QDt9Gt9bdGFhH\$gxX10FmGmrYNYz8od.sDIupcs3OioKrtjwxnmFMT8NUIIpNepgUfq1uSWAGTS3pwL0EFsHdAHzX5as6E0hkTF.' 
+		AnsibleHASH="\$6\$UOrIRkykWLbC0ACt\$hilixjxWZFOJ0lLk1dbHD.kifrb42TzG8gDg47u3N4lmu/5DUE55KGtvk1giAQj3VNYNBb4f6/7HN3FXx/o1q/"
 	fi
-    	printf "    - curtin in-target --target=/target -- /usr/sbin/useradd -m -c \"Ansible Account\" -s /bin/bash -G sudo -p \"${AnsibleHASH}\" ansible\n" >> ${HOME_DIR}/user-data
-    	printf "    - curtin in-target --target=/target -- mkdir /home/ansible/.ssh\n" >> ${HOME_DIR}/user-data
-    	printf "    - curtin in-target --target=/target -- chmod 0700 /home/ansible/.ssh\n" >> ${HOME_DIR}/user-data
-	printf "    - curtin in-target --target=/target -- touch /tmp/authorized_keys\n" >> ${HOME_DIR}/user-data
+    printf "    - curtin in-target --target=/target -- /usr/sbin/useradd -m -c \"Ansible Account\" -s /bin/bash -G sudo -p \'${AnsibleHASH}\' ansible\n" >> ${HOME_DIR}/user-data
+    printf "    - curtin in-target --target=/target -- mkdir /home/ansible/.ssh\n" >> ${HOME_DIR}/user-data
+    printf "    - curtin in-target --target=/target -- chmod 0700 /home/ansible/.ssh\n" >> ${HOME_DIR}/user-data
+    printf "    - curtin in-target --target=/target -- touch /tmp/authorized_keys\n" >> ${HOME_DIR}/user-data
 	printf "    - curtin in-target --target=/target -- install -o ansible -g ansible -m 0600 /tmp/authorized_keys -t /home/ansible/.ssh\n" >> ${HOME_DIR}/user-data
 	printf "    - echo \"${AnsibleSSHKEY}\" >> /target/home/ansible/.ssh/authorized_keys\n" >> ${HOME_DIR}/user-data
-    	printf "    - curtin in-target --target=/target -- chown -R ansible:ansible /home/ansible/\n" >> ${HOME_DIR}/user-data
+    printf "    - curtin in-target --target=/target -- chown -R ansible:ansible /home/ansible/\n" >> ${HOME_DIR}/user-data
 
 	# Adding additional user
 	PASSWD=$(openssl passwd -6 ${PASS})
-    	printf "    - curtin in-target --target=/target -- /usr/sbin/useradd -m -c \"${USERNAME} Account\" -s /bin/bash -p \'${PASSWD}\' ${USERNAME}\n" >> ${HOME_DIR}/user-data
+    printf "    - curtin in-target --target=/target -- /usr/sbin/useradd -m -c \"${USERNAME} Account\" -s /bin/bash -p \'${PASSWD}\' ${USERNAME}\n" >> ${HOME_DIR}/user-data
     
 	# Setting timezone 
 	case ${timez} in
-                        EST) timezone="America/New_York";;
-                        CST) timezone="America/Chicago";;
-                        MNT) timezone="America/Denver";;
-                        HI) timezone="US/Hawaii";;
-                        ALASKA|alaska|Alaska) timezone="US/Alaska";;
-                        *) timezone="America/Los_Angeles";;
-                esac
-    	echo -ne "    - curtin in-target --target=/target -- timedatectl set-timezone ${timezone}\n" >> ${HOME_DIR}/user-data 
+        EST) timezone="America/New_York";;
+        CST) timezone="America/Chicago";;
+        MNT) timezone="America/Denver";;
+        HI) timezone="US/Hawaii";;
+        ALASKA|alaska|Alaska) timezone="US/Alaska";;
+        *) timezone="America/Los_Angeles";;
+    esac
+    echo -ne "    - curtin in-target --target=/target -- timedatectl set-timezone ${timezone}\n" >> ${HOME_DIR}/user-data 
 	
 	# Update system
 	if [[ ${UPDATES} =~ y|Y ]];then
@@ -415,9 +452,11 @@ if [[ ${ANS} =~ [Y|y][E|e][S|s]|[Y|y] ]];then
 		printf "# Set hostname of server to install\n" > /home/${USER}/www/seed.env
 		printf "export NEW_SERVER_NAME=\n" >> /home/${USER}/www/seed.env
 		printf "# Set domain name needs to end with a period, and multiple comma seperated (ad1.example.com.,ad2.example.com.)\n" >> /home/${USER}/www/seed.env
-		printf "export DOMAIN=\"ad.example.com.,example.com.\"\n" >> /home/${USER}/www/seed.env
+		printf "# OS Version\n" >> /home/${USER}/www/seed.env
+                printf "export OS=\"22.04\"\n" >> /home/${USER}/www/seed.env
+                printf "export DOMAIN=\"ad.example.com.,example.com.\"\n" >> /home/${USER}/www/seed.env
 		printf "# Set filesystems to use LVM\n" >> /home/${USER}/www/seed.env
-        	printf "export DISK='y'\n" >> /home/${USER}/www/seed.env
+         	printf "export DISK='y'\n" >> /home/${USER}/www/seed.env
 		printf "# Set volume group name\n" >> /home/${USER}/www/seed.env
 		printf "export VGNAME=vgroot\n" >> /home/${USER}/www/seed.env
 		printf "# Set username\n" >> /home/${USER}/www/seed.env
@@ -459,6 +498,7 @@ if [[ ${ANS} =~ [Y|y][E|e][S|s]|[Y|y] ]];then
 	PKGS_For_ISO
 
     	# Start setup of user-data
+	printf "${YEL}Enter version of OS [${OS}]:${NC} "; read OS_ans
 	printf "${YEL}Enter hostname for new server:${NC} "; read NEW_SERVER_NAME
 	printf "${YEL}Use multiple filesystems with LVM (Y|N) [${DISK}]:${NC} "; read DISK_ans
 	if [[ ${DISK_ans} = '' ]];then
@@ -505,7 +545,11 @@ if [[ ${ANS} =~ [Y|y][E|e][S|s]|[Y|y] ]];then
     	fi
 
 	# Call NETWORK Function
-	NETWORK ${NEW_SERVER_NAME} ${LOCATION}
+    if [[ ! ${OS_ans} = '' ]];then
+        OS="${OS_ans}"
+    fi
+    OS_version=$(echo ${OS} | cut -d"." -f1)
+	NETWORK ${NEW_SERVER_NAME} ${LOCATION} ${OS_version}
 
 	# Ask to run updates
 	printf "${YEL}Run updates for new server (Y|N) [${UPDATES}]:${NC} "; read UPDATES_ans
