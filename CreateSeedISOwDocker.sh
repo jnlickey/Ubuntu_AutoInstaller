@@ -451,9 +451,9 @@ if [[ ${ANS} =~ [Y|y][E|e][S|s]|[Y|y] ]];then
 		printf "${YEL}You can set default variables in:${NC} /home/${USER}/www/seed.env\n"
 		printf "# Set hostname of server to install\n" > /home/${USER}/www/seed.env
 		printf "export NEW_SERVER_NAME=\n" >> /home/${USER}/www/seed.env
-		printf "# Set domain name needs to end with a period, and multiple comma seperated (ad1.example.com.,ad2.example.com.)\n" >> /home/${USER}/www/seed.env
 		printf "# OS Version\n" >> /home/${USER}/www/seed.env
-                printf "export OS=\"22.04\"\n" >> /home/${USER}/www/seed.env
+		printf "export OS=\"22.04\"\n" >> /home/${USER}/www/seed.env
+		printf "# Set domain name needs to end with a period, and multiple comma seperated (ad1.example.com.,ad2.example.com.)\n" >> /home/${USER}/www/seed.env
                 printf "export DOMAIN=\"ad.example.com.,example.com.\"\n" >> /home/${USER}/www/seed.env
 		printf "# Set filesystems to use LVM\n" >> /home/${USER}/www/seed.env
          	printf "export DISK='y'\n" >> /home/${USER}/www/seed.env
