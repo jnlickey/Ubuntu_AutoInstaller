@@ -285,7 +285,7 @@ function Create_SEED() {
 	# Create the seed.iso file
 	# cloud-localds ${HOME_DIR}/seed.iso ${HOME_DIR}/user-data ${HOME_DIR}/meta-data
 	printf "${YEL}Create seed.iso file in${NC} ${HOME_DIR} ${YEL}(Y|N):${NC} "; read ANS
-    FILES2PKG="${HOME_DIR}/user-data ${HOME_DIR}/meta-data ${HOME_DIR}/DockerInstall.sh ${HOME_DIR}/daemon.json ${HOME_DIR}/01-config.yaml ${HOME_DIR}/99-custom-network-test"
+        FILES2PKG="${HOME_DIR}/user-data ${HOME_DIR}/meta-data ${HOME_DIR}/DockerInstall.sh ${HOME_DIR}/daemon.json ${HOME_DIR}/01-config.yaml ${HOME_DIR}/99-custom-network-test"
 	if [[ ${ANS} =~ [Y|y][E|e][S|s]|[Y|y] ]];then
 		if [[ ${DOCKER} =~ Y|y ]];then
 			if [[ ${LOCATION} =~ vb|VB ]];then
@@ -320,17 +320,17 @@ function Create_DIR(){
 
 function Default_Config(){
 	# Setup NETWORKING with netplan config
-	echo -ne "    - cp /tmp/mnt/01-config.yaml /target/etc/netplan/01-config.yaml\n" >> ${HOME_DIR}/user-data
-    # Check NETWORKING via MOTD
-    echo -ne "    - cp /tmp/mnt/99-custom-network-test /target/etc/update-motd.d/99-custom-network-test\n" >> ${HOME_DIR}/user-data
-	# Adding default DNS entries
-	DNS1="$(echo ${DNSservers} | cut -d, -f1)"
-	DNS2="$(echo ${DNSservers} | cut -d, -f2)"
-	Domains="$(echo ${DOMAIN} | tr ',' ' ')"
-	printf "    - sed -i 's/^#DNS\=/DNS\=/g;s/^#Fall/Fall/g;s/^#Domains\=/Domains\=/g' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
-    printf "    - sed -i '/^DNS\=/ s/\$/${DNS1}/' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
-    printf "    - sed -i '/^Fall.*\=/ s/\$/${DNS2}/' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
-    printf "    - sed -i '/^Domains\=/ s/\$/${Domains}/' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
+ 	echo -ne "    - cp /tmp/mnt/01-config.yaml /target/etc/netplan/01-config.yaml\n" >> ${HOME_DIR}/user-data
+    	# Check NETWORKING via MOTD
+    	echo -ne "    - cp /tmp/mnt/99-custom-network-test /target/etc/update-motd.d/99-custom-network-test\n" >> ${HOME_DIR}/user-data
+    	# Adding default DNS entries
+    	DNS1="$(echo ${DNSservers} | cut -d, -f1)"
+    	DNS2="$(echo ${DNSservers} | cut -d, -f2)"
+    	Domains="$(echo ${DOMAIN} | tr ',' ' ')"
+    	printf "    - sed -i 's/^#DNS\=/DNS\=/g;s/^#Fall/Fall/g;s/^#Domains\=/Domains\=/g' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
+    	printf "    - sed -i '/^DNS\=/ s/\$/${DNS1}/' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
+    	printf "    - sed -i '/^Fall.*\=/ s/\$/${DNS2}/' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
+    	printf "    - sed -i '/^Domains\=/ s/\$/${Domains}/' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
 
    	# Adding Ansible user
 	# Adding Ansible user to sudo
@@ -344,28 +344,28 @@ function Default_Config(){
 	if [[ ${AnsibleHASH} = '' ]];then
 		AnsibleHASH="\$6\$UOrIRkykWLbC0ACt\$hilixjxWZFOJ0lLk1dbHD.kifrb42TzG8gDg47u3N4lmu/5DUE55KGtvk1giAQj3VNYNBb4f6/7HN3FXx/o1q/"
 	fi
-    printf "    - curtin in-target --target=/target -- /usr/sbin/useradd -m -c \"Ansible Account\" -s /bin/bash -G sudo -p \'${AnsibleHASH}\' ansible\n" >> ${HOME_DIR}/user-data
-    printf "    - curtin in-target --target=/target -- mkdir /home/ansible/.ssh\n" >> ${HOME_DIR}/user-data
-    printf "    - curtin in-target --target=/target -- chmod 0700 /home/ansible/.ssh\n" >> ${HOME_DIR}/user-data
-    printf "    - curtin in-target --target=/target -- touch /tmp/authorized_keys\n" >> ${HOME_DIR}/user-data
+    	printf "    - curtin in-target --target=/target -- /usr/sbin/useradd -m -c \"Ansible Account\" -s /bin/bash -G sudo -p \'${AnsibleHASH}\' ansible\n" >> ${HOME_DIR}/user-data
+    	printf "    - curtin in-target --target=/target -- mkdir /home/ansible/.ssh\n" >> ${HOME_DIR}/user-data
+    	printf "    - curtin in-target --target=/target -- chmod 0700 /home/ansible/.ssh\n" >> ${HOME_DIR}/user-data
+    	printf "    - curtin in-target --target=/target -- touch /tmp/authorized_keys\n" >> ${HOME_DIR}/user-data
 	printf "    - curtin in-target --target=/target -- install -o ansible -g ansible -m 0600 /tmp/authorized_keys -t /home/ansible/.ssh\n" >> ${HOME_DIR}/user-data
 	printf "    - echo \"${AnsibleSSHKEY}\" >> /target/home/ansible/.ssh/authorized_keys\n" >> ${HOME_DIR}/user-data
-    printf "    - curtin in-target --target=/target -- chown -R ansible:ansible /home/ansible/\n" >> ${HOME_DIR}/user-data
+    	printf "    - curtin in-target --target=/target -- chown -R ansible:ansible /home/ansible/\n" >> ${HOME_DIR}/user-data
 
 	# Adding additional user
 	PASSWD=$(openssl passwd -6 ${PASS})
-    printf "    - curtin in-target --target=/target -- /usr/sbin/useradd -m -c \"${USERNAME} Account\" -s /bin/bash -p \'${PASSWD}\' ${USERNAME}\n" >> ${HOME_DIR}/user-data
+    	printf "    - curtin in-target --target=/target -- /usr/sbin/useradd -m -c \"${USERNAME} Account\" -s /bin/bash -p \'${PASSWD}\' ${USERNAME}\n" >> ${HOME_DIR}/user-data
     
 	# Setting timezone 
 	case ${timez} in
-        EST) timezone="America/New_York";;
-        CST) timezone="America/Chicago";;
-        MNT) timezone="America/Denver";;
-        HI) timezone="US/Hawaii";;
-        ALASKA|alaska|Alaska) timezone="US/Alaska";;
-        *) timezone="America/Los_Angeles";;
-    esac
-    echo -ne "    - curtin in-target --target=/target -- timedatectl set-timezone ${timezone}\n" >> ${HOME_DIR}/user-data 
+        	EST) timezone="America/New_York";;
+        	CST) timezone="America/Chicago";;
+        	MNT) timezone="America/Denver";;
+        	HI) timezone="US/Hawaii";;
+        	ALASKA|alaska|Alaska) timezone="US/Alaska";;
+        	*) timezone="America/Los_Angeles";;
+    	esac
+    	echo -ne "    - curtin in-target --target=/target -- timedatectl set-timezone ${timezone}\n" >> ${HOME_DIR}/user-data 
 	
 	# Update system
 	if [[ ${UPDATES} =~ y|Y ]];then
@@ -414,7 +414,7 @@ function PKGS_For_ISO(){
 			INSTALL2="cloud-image-utils"
 		fi
 	fi
-    if [[ ${INSTALL1} = "openssl" ]] && [[ ${INSTALL2} = "cloud-image-utils" ]];then
+    	if [[ ${INSTALL1} = "openssl" ]] && [[ ${INSTALL2} = "cloud-image-utils" ]];then
 		sudo apt install openssl cloud-image-utils -y
 	elif [[ ${INSTALL1} = "openssl" ]]; then
 			sudo apt install openssl -y
@@ -545,10 +545,10 @@ if [[ ${ANS} =~ [Y|y][E|e][S|s]|[Y|y] ]];then
     	fi
 
 	# Call NETWORK Function
-    if [[ ! ${OS_ans} = '' ]];then
-        OS="${OS_ans}"
-    fi
-    OS_version=$(echo ${OS} | cut -d"." -f1)
+   	 if [[ ! ${OS_ans} = '' ]];then
+        	OS="${OS_ans}"
+    	fi
+    	OS_version=$(echo ${OS} | cut -d"." -f1)
 	NETWORK ${NEW_SERVER_NAME} ${LOCATION} ${OS_version}
 
 	# Ask to run updates
