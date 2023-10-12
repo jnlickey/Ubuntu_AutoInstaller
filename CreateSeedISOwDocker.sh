@@ -5,9 +5,8 @@
 #
 # Created by: J.Lickey
 # 07/13/2021
-# Modified: 10/17/2022
+# Modified: 06/26/2023
 #
-# Default credentials: Ansible / ChangeMe
 ##############################################################################
 
 # Validate password
@@ -90,6 +89,14 @@ function NETWORK () {
 	echo "    echo \"     *** NETWORK CONNECTION DOWN ***     \"" >> ${HOME_DIR}/99-custom-network-test
     echo "fi" >> ${HOME_DIR}/99-custom-network-test
     chmod 775 ${HOME_DIR}/99-custom-network-test
+
+    if [[ ! -f ${HOME_DIR}/Interface.sh ]];then
+        echo "#!/bin/bash" >> ${HOME_DIR}/Interface.sh
+        echo "INTERFACE=\$(ip a | grep ens | head -1 | awk '{print \$2}' | cut -d: -f1)" >> ${HOME_DIR}/Interface.sh
+        echo "sed -i \"s|ens.*|\${INTERFACE}:|g\" /etc/netplan/01-config.yaml" >> ${HOME_DIR}/Interface.sh
+        echo "netplan apply" >> ${HOME_DIR}/Interface.sh
+        chmod 770 ${HOME_DIR}/Interface.sh
+    fi
 }
 
 # Set's up Docker Installation script
@@ -102,6 +109,12 @@ function DOCKERINSTALL () {
             touch ${HOME_DIR}/DockerInstall.sh
             chmod 750 ${HOME_DIR}/DockerInstall.sh
             echo -ne "#!/bin/bash\n\n" >> ${HOME_DIR}/DockerInstall.sh
+            echo -ne "\n" >> ${HOME_DIR}/DockerInstall.sh
+            echo -ne "# Check if /etc/docker exists\n" >> ${HOME_DIR}/DockerInstall.sh
+            echo -ne "if [[ ! -d /etc/docker ]];then" >> ${HOME_DIR}/DockerInstall.sh
+            echo -ne "   mkdir /etc/docker\n" >> ${HOME_DIR}/DockerInstall.sh
+            echo -ne "fi\n" >> ${HOME_DIR}/DockerInstall.sh
+            echo -ne "\n" >> ${HOME_DIR}/DockerInstall.sh
             echo -ne "#\n# Install packages for Docker\n#\n" >> ${HOME_DIR}/DockerInstall.sh
             echo "sudo apt install apt-transport-https ca-certificates gnupg lsb-release -y" >> ${HOME_DIR}/DockerInstall.sh
             echo -ne "\n#\n# Install Docker\n#\n" >> ${HOME_DIR}/DockerInstall.sh
@@ -122,6 +135,7 @@ function DOCKERINSTALL () {
             echo -ne "\n" >> ${HOME_DIR}/DockerInstall.sh
             echo -ne "sudo cp /DockerInstall/daemon.json /etc/docker/daemon.json\n" >> ${HOME_DIR}/DockerInstall.sh
             echo -ne "sudo rm -rf /etc/cron.d/docker-install\n" >> ${HOME_DIR}/DockerInstall.sh
+            echo -ne "chmod 660 /DockerInstall/DockerInstall.sh\n" >> ${HOME_DIR}/DockerInstall.sh
             echo "reboot" >> ${HOME_DIR}/DockerInstall.sh
             echo "exit 0" >> ${HOME_DIR}/DockerInstall.sh
         fi
@@ -218,11 +232,14 @@ function Build_STORAGE(){
 		echo -ne "    - {id: lvm_partition-5, name: FS_tmp, preserve: false, size: 1073741824B, type: lvm_partition, volgroup: lvm_volgroup-0}\n" >> ${HOME_DIR}/user-data
 		echo -ne "    - {fstype: ext4, id: format-9, preserve: false, type: format, volume: lvm_partition-5}\n" >> ${HOME_DIR}/user-data
 		echo -ne "    # /usr\n" >> ${HOME_DIR}/user-data
-		echo -ne "    - {id: lvm_partition-6, name: FS_usr, preserve: false, size: 4442450944B, type: lvm_partition, volgroup: lvm_volgroup-0}\n"  >> ${HOME_DIR}/user-data
+		echo -ne "    - {id: lvm_partition-6, name: FS_usr, preserve: false, size: 6242450944B, type: lvm_partition, volgroup: lvm_volgroup-0}\n"  >> ${HOME_DIR}/user-data
 		echo -ne "    - {fstype: ext4, id: format-10, preserve: false, type: format, volume: lvm_partition-6}\n" >> ${HOME_DIR}/user-data
 		echo -ne "    # /var/log\n" >> ${HOME_DIR}/user-data
 		echo -ne "    - {id: lvm_partition-3, name: FS_var_log, preserve: false, size: 2147483648B, type: lvm_partition, volgroup: lvm_volgroup-0}\n" >> ${HOME_DIR}/user-data 
 		echo -ne "    - {fstype: ext4, id: format-11, preserve: false, type: format, volume: lvm_partition-3}\n" >> ${HOME_DIR}/user-data
+		echo -ne "    # /var/tmp\n" >> ${HOME_DIR}/user-data
+		echo -ne "    - {id: lvm_partition-7, name: FS_var_tmp, preserve: false, size: 1073741824B, type: lvm_partition, volgroup: lvm_volgroup-0}\n" >> ${HOME_DIR}/user-data 
+		echo -ne "    - {fstype: ext4, id: format-12, preserve: false, type: format, volume: lvm_partition-7}\n" >> ${HOME_DIR}/user-data
 		echo -ne "\n"  >> ${HOME_DIR}/user-data
 			#### Mount Filesystems ####
 		echo -ne "    # Mount Storage devices\n" >> ${HOME_DIR}/user-data  
@@ -235,6 +252,7 @@ function Build_STORAGE(){
 		echo -ne "    - {device: format-9, id: mount-9, path: /tmp, type: mount}\n" >> ${HOME_DIR}/user-data
 		echo -ne "    - {device: format-10, id: mount-10, path: /usr, type: mount}\n" >> ${HOME_DIR}/user-data
 		echo -ne "    - {device: format-11, id: mount-11, path: /var/log, type: mount}\n" >> ${HOME_DIR}/user-data
+		echo -ne "    - {device: format-12, id: mount-12, path: /var/tmp, type: mount}\n" >> ${HOME_DIR}/user-data
 		echo -ne "\n" >> ${HOME_DIR}/user-data
 	else
 		#### If ONLY one filesystem being used ####
@@ -281,31 +299,49 @@ function VM_TOOLS(){
 	echo -ne "    - curtin in-target --target=/target -- touch /etc/cloud/cloud-init.disabled\n" >> ${HOME_DIR}/user-data
 }
 
+#function clean_up() {
+#    test -d "$TMPDIR" && rm -fr "$TMPDIR"
+#}
+
 function Create_SEED() {
 	# Create the seed.iso file
 	# cloud-localds ${HOME_DIR}/seed.iso ${HOME_DIR}/user-data ${HOME_DIR}/meta-data
-	printf "${YEL}Create seed.iso file in${NC} ${HOME_DIR} ${YEL}(Y|N):${NC} "; read ANS
-        FILES2PKG="${HOME_DIR}/user-data ${HOME_DIR}/meta-data ${HOME_DIR}/DockerInstall.sh ${HOME_DIR}/daemon.json ${HOME_DIR}/01-config.yaml ${HOME_DIR}/99-custom-network-test"
+	printf "${YEL}Create seed-${NEW_SERVER_NAME}.iso file in${NC} ${HOME_DIR} ${YEL}(Y|N):${NC} "; read ANS
+        FILES2PKG="${HOME_DIR}/user-data ${HOME_DIR}/meta-data ${HOME_DIR}/DockerInstall.sh ${HOME_DIR}/daemon.json ${HOME_DIR}/01-config.yaml ${HOME_DIR}/99-custom-network-test ${HOME_DIR}/Interface.sh ${HOME_DIR}/Scan4Disk.sh ${HOME_DIR}/RemoveOldKernels.sh ${HOME_DIR}/ContainerBackup.sh"
+    #TMPDIR=$(mktemp -d)
+    #CURRENT_DIR=$(pwd)
+    #echo $TMPDIR
+    #echo $HOME_DIR
+    #chmod -R 777 ${TMPDIR}
+    #cd ${TMPDIR}
 	if [[ ${ANS} =~ [Y|y][E|e][S|s]|[Y|y] ]];then
 		if [[ ${DOCKER} =~ Y|y ]];then
 			if [[ ${LOCATION} =~ vb|VB ]];then
-				mkisofs -V cidata -r -o ${HOME_DIR}/seed-${NEW_SERVER_NAME}-vb.iso ${HOME_DIR}/user-data ${HOME_DIR}/meta-data ${HOME_DIR}/DockerInstall.sh ${HOME_DIR}/daemon.json ${HOME_DIR}/01-config.yaml ${HOME_DIR}/99-custom-network-test 2>/dev/null
+				mkisofs --input-charset iso8859-1 -V cidata -U -iso-level 4 -R -o "/tmp/seed-${NEW_SERVER_NAME}-vb.iso" ${HOME_DIR}/user-data ${HOME_DIR}/meta-data ${HOME_DIR}/DockerInstall.sh ${HOME_DIR}/daemon.json ${HOME_DIR}/01-config.yaml ${HOME_DIR}/99-custom-network-test ${HOME_DIR}/Interface.sh 2>/dev/null
 			else
-				mkisofs -V cidata -r -o ${HOME_DIR}/seed-${NEW_SERVER_NAME}-vm.iso ${FILES2PKG} 2>/dev/null
+				mkisofs --input-charset iso8859-1 -V cidata -U -iso-level 4 -R -o "/tmp/seed-${NEW_SERVER_NAME}-vm.iso" ${FILES2PKG} 2>/dev/null
 			fi
 		else
 			if [[ ${LOCATION} =~ vb|VB ]];then
-				mkisofs -V cidata -r -o ${HOME_DIR}/seed-${NEW_SERVER_NAME}-vb.iso ${FILES2PKG} 2>/dev/null
+				mkisofs --input-charset iso8859-1 -V cidata -U -iso-level 4 -R -o "/tmp/seed-${NEW_SERVER_NAME}-vb.iso" ${FILES2PKG} 2>/dev/null
 			else
-				mkisofs -V cidata -r -o ${HOME_DIR}/seed-${NEW_SERVER_NAME}-vm.iso ${FILES2PKG} 2>/dev/null
+				mkisofs --input-charset iso8859-1 -V cidata -U -iso-level 4 -R -o "/tmp/seed-${NEW_SERVER_NAME}-vm.iso" ${FILES2PKG} 2>/dev/null
 			fi
 		fi
+        #echo $(ls -lah ${TMPDIR})
+        # Moves ISO file from temporary directory to HOME_DIR
+        #mv ${TMPDIR}/*.iso ${HOME_DIR}
+        mv /tmp/seed*.iso ${HOME_DIR}
+        # Cleans up temoporary directory that is used
+        #trap "clean_up $TMPDIR" EXIT
 	elif [[ ${ANS} = '' ]];then
 		printf "${RED}You didn't enter yes|Y|y or no|N|n${NC}\n"
 		Create_SEED
 	else
 		exit
 	fi
+    #cd ${CURRENT_DIR}
+
 }
 
 function Create_DIR(){
@@ -319,18 +355,28 @@ function Create_DIR(){
 }
 
 function Default_Config(){
+    echo -ne "    - curtin in-target --target=/target -- mkdir -p /usr/local/scripts\n" >> ${HOME_DIR}/user-data
+    # Adding additional scripts
+    echo -ne "    - cp /tmp/mnt/ContainerBackup.sh /target/usr/local/scripts/ContainerBackup.sh\n" >> ${HOME_DIR}/user-data
+    echo -ne "    - cp /tmp/mnt/Scan4Disk.sh /target/usr/local/scripts/Scan4Disk.sh\n" >> ${HOME_DIR}/user-data
+    echo -ne "    - cp /tmp/mnt/RemoveOldKernels.sh /target/usr/local/scripts/RemoveOldKernels.sh\n" >> ${HOME_DIR}/user-data
+
 	# Setup NETWORKING with netplan config
  	echo -ne "    - cp /tmp/mnt/01-config.yaml /target/etc/netplan/01-config.yaml\n" >> ${HOME_DIR}/user-data
-    	# Check NETWORKING via MOTD
-    	echo -ne "    - cp /tmp/mnt/99-custom-network-test /target/etc/update-motd.d/99-custom-network-test\n" >> ${HOME_DIR}/user-data
-    	# Adding default DNS entries
-    	DNS1="$(echo ${DNSservers} | cut -d, -f1)"
-    	DNS2="$(echo ${DNSservers} | cut -d, -f2)"
-    	Domains="$(echo ${DOMAIN} | tr ',' ' ')"
-    	printf "    - sed -i 's/^#DNS\=/DNS\=/g;s/^#Fall/Fall/g;s/^#Domains\=/Domains\=/g' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
-    	printf "    - sed -i '/^DNS\=/ s/\$/${DNS1}/' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
-    	printf "    - sed -i '/^Fall.*\=/ s/\$/${DNS2}/' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
-    	printf "    - sed -i '/^Domains\=/ s/\$/${Domains}/' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
+ 	echo -ne "    - cp /tmp/mnt/Interface.sh /target/usr/local/scripts/Interface.sh\n" >> ${HOME_DIR}/user-data
+    echo -ne "    - curtin in-target --target=/target -- /usr/local/scripts/Interface.sh\n" >> ${HOME_DIR}/user-data
+  	# Check NETWORKING via MOTD
+   	echo -ne "    - cp /tmp/mnt/99-custom-network-test /target/etc/update-motd.d/99-custom-network-test\n" >> ${HOME_DIR}/user-data
+   	# Adding default DNS entries
+   	DNS1="$(echo ${DNSservers} | cut -d, -f1)"
+   	DNS2="$(echo ${DNSservers} | cut -d, -f2)"
+   	DNS3="$(echo ${DNSservers} | cut -d, -f3)"
+   	DNS4="$(echo ${DNSservers} | cut -d, -f4)"
+   	Domains="$(echo ${DOMAIN} | tr ',' ' ')"
+   	printf "    - sed -i 's/^#DNS\=/DNS\=/g;s/^#Fall/Fall/g;s/^#Domains\=/Domains\=/g' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
+   	printf "    - sed -i '/^DNS\=/ s/\$/${DNS1} ${DNS2} ${DNS3}/' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
+   	printf "    - sed -i '/^Fall.*\=/ s/\$/${DNS4}/' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
+   	printf "    - sed -i '/^Domains\=/ s/\$/${Domains}/' /target/etc/systemd/resolved.conf\n" >> ${HOME_DIR}/user-data
 
    	# Adding Ansible user
 	# Adding Ansible user to sudo
@@ -338,23 +384,23 @@ function Default_Config(){
 	printf "    - chmod 0440 /target/etc/sudoers.d/ansible_admin\n" >> ${HOME_DIR}/user-data
 	# Pulled from .pub for the Ansible user
 	if [[ ${AnsibleSSHKEY} = '' ]];then
-		AnsibleSSHKEY="ssh-rsa somerandomcharacterssomerandomcharacterssomerandomcharacterssomerandomcharacters ansible@something"
+		AnsibleSSHKEY="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDBYJcUKRMFskEb99lMq961wC+eUaVY52HXqyzvJQ8z6BrGGEJLO6/yHD9uanrFC1hmG7CUgD2h6onWtZJyzAjyW7HijCxlO7ZX+2LA0QD5/epk2TMjA5o6nvKfZE3+2bzsIUddHA8nukRBEIVU3rKYR3XqCiY9mQLkOfAQidqLhQRoOCg9EH0RelJbZLqY1hC5G4s7sUZynSxd3tiWm6psow7fcj0ExXtoeph+3vFkMYwy+jYe2Srl1nYL0cpk6B6on2SsRDB4iEeBPMFPM+2bsGVl6qGoY/ym7FFeOQExcQZrcfFCvZuQ9ohnX7xHP8JfOf0NX5rYuIjIiCfyxL7/ ansible@ansible"
 	fi
 	# Used read PASS;openssl passwd -6 $PASS to create hash
 	if [[ ${AnsibleHASH} = '' ]];then
-		AnsibleHASH="\$6\$UOrIRkykWLbC0ACt\$hilixjxWZFOJ0lLk1dbHD.kifrb42TzG8gDg47u3N4lmu/5DUE55KGtvk1giAQj3VNYNBb4f6/7HN3FXx/o1q/"
+		AnsibleHASH="\$6\$NTnnne13gbLRTjM4\$535L4RCNH.BMXf.0/LlV.RMXJvR1iQq0bT5xIxTufJgXKhGz3vmbbQvwxNphDkZnksxWn21nhEeafxhTMKk4J1"
 	fi
-    	printf "    - curtin in-target --target=/target -- /usr/sbin/useradd -m -c \"Ansible Account\" -s /bin/bash -G sudo -p \'${AnsibleHASH}\' ansible\n" >> ${HOME_DIR}/user-data
-    	printf "    - curtin in-target --target=/target -- mkdir /home/ansible/.ssh\n" >> ${HOME_DIR}/user-data
-    	printf "    - curtin in-target --target=/target -- chmod 0700 /home/ansible/.ssh\n" >> ${HOME_DIR}/user-data
-    	printf "    - curtin in-target --target=/target -- touch /tmp/authorized_keys\n" >> ${HOME_DIR}/user-data
+    printf "    - curtin in-target --target=/target -- /usr/sbin/useradd -m -c \"Ansible Account\" -s /bin/bash -G sudo -p \'${AnsibleHASH}\' ansible\n" >> ${HOME_DIR}/user-data
+    printf "    - curtin in-target --target=/target -- mkdir /home/ansible/.ssh\n" >> ${HOME_DIR}/user-data
+    printf "    - curtin in-target --target=/target -- chmod 0700 /home/ansible/.ssh\n" >> ${HOME_DIR}/user-data
+    printf "    - curtin in-target --target=/target -- touch /tmp/authorized_keys\n" >> ${HOME_DIR}/user-data
 	printf "    - curtin in-target --target=/target -- install -o ansible -g ansible -m 0600 /tmp/authorized_keys -t /home/ansible/.ssh\n" >> ${HOME_DIR}/user-data
 	printf "    - echo \"${AnsibleSSHKEY}\" >> /target/home/ansible/.ssh/authorized_keys\n" >> ${HOME_DIR}/user-data
-    	printf "    - curtin in-target --target=/target -- chown -R ansible:ansible /home/ansible/\n" >> ${HOME_DIR}/user-data
+    printf "    - curtin in-target --target=/target -- chown -R ansible:ansible /home/ansible/\n" >> ${HOME_DIR}/user-data
 
 	# Adding additional user
 	PASSWD=$(openssl passwd -6 ${PASS})
-    	printf "    - curtin in-target --target=/target -- /usr/sbin/useradd -m -c \"${USERNAME} Account\" -s /bin/bash -p \'${PASSWD}\' ${USERNAME}\n" >> ${HOME_DIR}/user-data
+    printf "    - curtin in-target --target=/target -- /usr/sbin/useradd -m -c \"${USERNAME} Account\" -s /bin/bash -p \'${PASSWD}\' ${USERNAME}\n" >> ${HOME_DIR}/user-data
     
 	# Setting timezone 
 	case ${timez} in
@@ -403,7 +449,8 @@ function PKGS_For_ISO(){
 	# Check for needed packages for creation of seed.iso
 	INSTALLED1=$(sudo dpkg-query -W -f='${Status}\n' openssl | cut -d" " -f3)
 	INSTALLED2=$(sudo dpkg-query -W -f='${Status}\n' cloud-image-utils | cut -d" " -f3)
-	if [[ ${INSTALLED1} = '' ]];then
+	INSTALLED3=$(sudo dpkg-query -W -f='${Status}\n' xorriso | cut -d" " -f3)
+    if [[ ${INSTALLED1} = '' ]];then
 		printf "Would you like to install openssl now? "; read ans
 			if [[ ${ans} =~ Y|y ]];then
 					INSTALL1="openssl"
@@ -411,16 +458,33 @@ function PKGS_For_ISO(){
 	elif [[ ${INSTALLED2} = '' ]];then
 			printf "Would you like to install cloud-image-utils now? "; read ans
 			if [[ ${ans} =~ Y|y ]];then
-			INSTALL2="cloud-image-utils"
-		fi
+			        INSTALL2="cloud-image-utils"
+		    fi
+	elif [[ ${INSTALLED3} = '' ]];then
+			printf "Would you like to install xorriso now? "; read ans
+			if [[ ${ans} =~ Y|y ]];then
+			        INSTALL3="xorriso"
+		    fi
 	fi
-    	if [[ ${INSTALL1} = "openssl" ]] && [[ ${INSTALL2} = "cloud-image-utils" ]];then
-		sudo apt install openssl cloud-image-utils -y
+    if [[ ${INSTALL1} = "openssl" ]] && [[ ${INSTALL2} = "cloud-image-utils" ]] && [[ ${INSTALLED3} = "xorriso" ]];then
+	 	sudo apt install openssl cloud-image-utils xorriso -y
 	elif [[ ${INSTALL1} = "openssl" ]]; then
-			sudo apt install openssl -y
+		sudo apt install openssl -y
 	elif [[ ${INSTALL2} = "cloud-image-utils" ]]; then
 		sudo apt install cloud-image-utils -y	
+	elif [[ ${INSTALL3} = "xorriso" ]]; then
+		sudo apt install xorriso -y	
 	fi
+}
+
+function Check4files() {
+    for i in 99-custom-network-test ContainerBackup.sh CreateSeedISOwDocker.sh DockerInstall.sh Interface.sh RemoveOldKernels.sh Scan4Disk.sh;do
+        if [[ ! -x "${HOME_DIR}/${i}" ]];then
+            printf "File $i not found in ${HOME_DIR}"
+            exit
+        fi
+    done
+        
 }
 # ========================================= MAIN SCRIPT =========================================
 # Colors
@@ -452,15 +516,15 @@ if [[ ${ANS} =~ [Y|y][E|e][S|s]|[Y|y] ]];then
 		printf "# Set hostname of server to install\n" > /home/${USER}/www/seed.env
 		printf "export NEW_SERVER_NAME=\n" >> /home/${USER}/www/seed.env
 		printf "# OS Version\n" >> /home/${USER}/www/seed.env
-		printf "export OS=\"22.04\"\n" >> /home/${USER}/www/seed.env
+        printf "export OS=\"22.04\"\n" >> /home/${USER}/www/seed.env
 		printf "# Set domain name needs to end with a period, and multiple comma seperated (ad1.example.com.,ad2.example.com.)\n" >> /home/${USER}/www/seed.env
-                printf "export DOMAIN=\"ad.example.com.,example.com.\"\n" >> /home/${USER}/www/seed.env
-		printf "# Set filesystems to use LVM\n" >> /home/${USER}/www/seed.env
-         	printf "export DISK='y'\n" >> /home/${USER}/www/seed.env
+        printf "export DOMAIN=\"ad.cll.cloud.,cll.cloud.,cisco.com.\"\n" >> /home/${USER}/www/seed.env
+    	printf "# Set filesystems to use LVM\n" >> /home/${USER}/www/seed.env
+      	printf "export DISK='y'\n" >> /home/${USER}/www/seed.env
 		printf "# Set volume group name\n" >> /home/${USER}/www/seed.env
 		printf "export VGNAME=vgroot\n" >> /home/${USER}/www/seed.env
 		printf "# Set username\n" >> /home/${USER}/www/seed.env
-		printf "export USERNAME=myuser\n" >> /home/${USER}/www/seed.env
+		printf "export USERNAME=tis\n" >> /home/${USER}/www/seed.env
 		printf "# Install DOCKER by default\n" >> /home/${USER}/www/seed.env
 		printf "export DOCKER='y'\n" >> /home/${USER}/www/seed.env
 		printf "# Set Docker Compose installation directory\n" >> /home/${USER}/www/seed.env
@@ -468,13 +532,13 @@ if [[ ${ANS} =~ [Y|y][E|e][S|s]|[Y|y] ]];then
 		printf "# Set Location for VMware or VirtualBox\n" >> /home/${USER}/www/seed.env
 		printf "export LOCATION='VM'\n" >> /home/${USER}/www/seed.env
 		printf "# Set timezone ( EST, CST, MNT, PST, Alaska, or HI (Hawaii) )\n" >> /home/${USER}/www/seed.env
-		printf "export timez='EST'\n" >> /home/${USER}/www/seed.env
+		printf "export timez='PST'\n" >> /home/${USER}/www/seed.env
 		printf "# Set system updates\n" >> /home/${USER}/www/seed.env
 		printf "export UPDATES='y'\n" >> /home/${USER}/www/seed.env
 		printf "# Set Home directory location\n" >> /home/${USER}/www/seed.env
 		printf "export HOME_DIR=\"/home/${USER}/www\"\n" >> /home/${USER}/www/seed.env
 		printf "# Set default DNS servers, comma seperated\n" >> /home/${USER}/www/seed.env
-		printf "export DNSservers='8.8.8.8,127.0.0.1'\n" >> /home/${USER}/www/seed.env
+		printf "export DNSservers='172.17.0.53,172.27.0.53,171.70.168.183,8.8.8.8'\n" >> /home/${USER}/www/seed.env
 		printf "# REQUIRED DEFAULT Packages for VirtualBox\n" >> /home/${USER}/www/seed.env
 		printf "export DEFAULT_PACKAGES_VB=\"resolvconf,vim,curl,wget,openssh-server,perl,build-essential,hwinfo,ifupdown,locate,net-tools\"\n" >> /home/${USER}/www/seed.env 
 		printf "# REQUIRED DEFAULT Packages for VMware\n" >> /home/${USER}/www/seed.env
@@ -490,7 +554,7 @@ if [[ ${ANS} =~ [Y|y][E|e][S|s]|[Y|y] ]];then
 	fi
 
 	source /home/${USER}/www/seed.env
-    	
+
 	# Clean-up Old Configs
 	rm -f ${HOME_DIR}/01-config.yaml* ${HOME_DIR}/daemon.json ${HOME_DIR}/DockerInstall.sh ${HOME_DIR}/meta-data ${HOME_DIR}/user-data ${HOME_DIR}/*seed.iso
     
@@ -575,6 +639,7 @@ if [[ ${ANS} =~ [Y|y][E|e][S|s]|[Y|y] ]];then
 	Install_Docker
 	Default_Config ${PASS} ${DNSServers}
 	Reboot_SRV
+    Check4files    
 	Create_SEED
 else
 	exit
