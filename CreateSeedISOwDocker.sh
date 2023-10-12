@@ -5,8 +5,8 @@
 #
 # Created by: J.Lickey
 # 07/13/2021
-# Modified: 06/26/2023
-#
+# Modified: 10/12/2023
+# Default credentials: ansible / ChangeMe
 ##############################################################################
 
 # Validate password
@@ -85,8 +85,11 @@ function NETWORK () {
     echo "#!/bin/bash" > ${HOME_DIR}/99-custom-network-test
     echo "result1=\$(ping -c1 $DNS1 | grep received | awk '{print \$4}')" >> ${HOME_DIR}/99-custom-network-test
     echo "result2=\$(ping -c1 $DNS2 | grep received | awk '{print \$4}')" >> ${HOME_DIR}/99-custom-network-test
-    echo "if [[ ! \${result1} = \"1\" ]] || [[ ! \${result2} = \"1\" ]];then" >> ${HOME_DIR}/99-custom-network-test
-	echo "    echo \"     *** NETWORK CONNECTION DOWN ***     \"" >> ${HOME_DIR}/99-custom-network-test
+    echo "if [[ ! \${result1} = \"1\" ]];then" >> ${HOME_DIR}/99-custom-network-test
+	echo "    echo \"     *** $DNS1 NETWORK CONNECTION DOWN ***     \"" >> ${HOME_DIR}/99-custom-network-test
+    echo "fi" >> ${HOME_DIR}/99-custom-network-test
+    echo "if [[ ! \${result2} = \"1\" ]];then" >> ${HOME_DIR}/99-custom-network-test
+	echo "    echo \"     *** $DNS2 NETWORK CONNECTION DOWN ***     \"" >> ${HOME_DIR}/99-custom-network-test
     echo "fi" >> ${HOME_DIR}/99-custom-network-test
     chmod 775 ${HOME_DIR}/99-custom-network-test
 
@@ -145,7 +148,7 @@ function DOCKERINSTALL () {
             touch ${HOME_DIR}/daemon.json
             echo '{' >> ${HOME_DIR}/daemon.json
             echo '  "default-address-pools": [' >> ${HOME_DIR}/daemon.json 
-            echo '      {"base": "10.241.0.0/16", "size":24}' >> ${HOME_DIR}/daemon.json
+            echo '      {"base": "10.121.0.0/16", "size":24}' >> ${HOME_DIR}/daemon.json
             echo '  ],' >> ${HOME_DIR}/daemon.json
             echo '  "log-driver": "json-file",' >> ${HOME_DIR}/daemon.json
             echo '  "log-opts": {' >> ${HOME_DIR}/daemon.json
@@ -299,21 +302,11 @@ function VM_TOOLS(){
 	echo -ne "    - curtin in-target --target=/target -- touch /etc/cloud/cloud-init.disabled\n" >> ${HOME_DIR}/user-data
 }
 
-#function clean_up() {
-#    test -d "$TMPDIR" && rm -fr "$TMPDIR"
-#}
-
 function Create_SEED() {
 	# Create the seed.iso file
 	# cloud-localds ${HOME_DIR}/seed.iso ${HOME_DIR}/user-data ${HOME_DIR}/meta-data
 	printf "${YEL}Create seed-${NEW_SERVER_NAME}.iso file in${NC} ${HOME_DIR} ${YEL}(Y|N):${NC} "; read ANS
         FILES2PKG="${HOME_DIR}/user-data ${HOME_DIR}/meta-data ${HOME_DIR}/DockerInstall.sh ${HOME_DIR}/daemon.json ${HOME_DIR}/01-config.yaml ${HOME_DIR}/99-custom-network-test ${HOME_DIR}/Interface.sh ${HOME_DIR}/Scan4Disk.sh ${HOME_DIR}/RemoveOldKernels.sh ${HOME_DIR}/ContainerBackup.sh"
-    #TMPDIR=$(mktemp -d)
-    #CURRENT_DIR=$(pwd)
-    #echo $TMPDIR
-    #echo $HOME_DIR
-    #chmod -R 777 ${TMPDIR}
-    #cd ${TMPDIR}
 	if [[ ${ANS} =~ [Y|y][E|e][S|s]|[Y|y] ]];then
 		if [[ ${DOCKER} =~ Y|y ]];then
 			if [[ ${LOCATION} =~ vb|VB ]];then
@@ -328,20 +321,13 @@ function Create_SEED() {
 				mkisofs --input-charset iso8859-1 -V cidata -U -iso-level 4 -R -o "/tmp/seed-${NEW_SERVER_NAME}-vm.iso" ${FILES2PKG} 2>/dev/null
 			fi
 		fi
-        #echo $(ls -lah ${TMPDIR})
-        # Moves ISO file from temporary directory to HOME_DIR
-        #mv ${TMPDIR}/*.iso ${HOME_DIR}
         mv /tmp/seed*.iso ${HOME_DIR}
-        # Cleans up temoporary directory that is used
-        #trap "clean_up $TMPDIR" EXIT
 	elif [[ ${ANS} = '' ]];then
 		printf "${RED}You didn't enter yes|Y|y or no|N|n${NC}\n"
 		Create_SEED
 	else
 		exit
 	fi
-    #cd ${CURRENT_DIR}
-
 }
 
 function Create_DIR(){
@@ -384,11 +370,11 @@ function Default_Config(){
 	printf "    - chmod 0440 /target/etc/sudoers.d/ansible_admin\n" >> ${HOME_DIR}/user-data
 	# Pulled from .pub for the Ansible user
 	if [[ ${AnsibleSSHKEY} = '' ]];then
-		AnsibleSSHKEY="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDBYJcUKRMFskEb99lMq961wC+eUaVY52HXqyzvJQ8z6BrGGEJLO6/yHD9uanrFC1hmG7CUgD2h6onWtZJyzAjyW7HijCxlO7ZX+2LA0QD5/epk2TMjA5o6nvKfZE3+2bzsIUddHA8nukRBEIVU3rKYR3XqCiY9mQLkOfAQidqLhQRoOCg9EH0RelJbZLqY1hC5G4s7sUZynSxd3tiWm6psow7fcj0ExXtoeph+3vFkMYwy+jYe2Srl1nYL0cpk6B6on2SsRDB4iEeBPMFPM+2bsGVl6qGoY/ym7FFeOQExcQZrcfFCvZuQ9ohnX7xHP8JfOf0NX5rYuIjIiCfyxL7/ ansible@ansible"
+		AnsibleSSHKEY="ssh-rsa somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+somereallylongkey+ ansible@ansible"
 	fi
 	# Used read PASS;openssl passwd -6 $PASS to create hash
 	if [[ ${AnsibleHASH} = '' ]];then
-		AnsibleHASH="\$6\$NTnnne13gbLRTjM4\$535L4RCNH.BMXf.0/LlV.RMXJvR1iQq0bT5xIxTufJgXKhGz3vmbbQvwxNphDkZnksxWn21nhEeafxhTMKk4J1"
+		AnsibleHASH="\$6\$UeJ5aqVHvu5vZIPt\$7ChJAuA.MiyawoyYO7GsiQKTweJRc9DtN9qRsnRyf13Q0Es7ngQHrTwCYukYi4lkJ2T21xC7B56PHk./gt2.8/"
 	fi
     printf "    - curtin in-target --target=/target -- /usr/sbin/useradd -m -c \"Ansible Account\" -s /bin/bash -G sudo -p \'${AnsibleHASH}\' ansible\n" >> ${HOME_DIR}/user-data
     printf "    - curtin in-target --target=/target -- mkdir /home/ansible/.ssh\n" >> ${HOME_DIR}/user-data
@@ -478,7 +464,7 @@ function PKGS_For_ISO(){
 }
 
 function Check4files() {
-    for i in 99-custom-network-test ContainerBackup.sh CreateSeedISOwDocker.sh DockerInstall.sh Interface.sh RemoveOldKernels.sh Scan4Disk.sh;do
+    for i in 99-custom-network-test DockerInstall.sh Interface.sh;do
         if [[ ! -x "${HOME_DIR}/${i}" ]];then
             printf "File $i not found in ${HOME_DIR}"
             exit
@@ -518,7 +504,7 @@ if [[ ${ANS} =~ [Y|y][E|e][S|s]|[Y|y] ]];then
 		printf "# OS Version\n" >> /home/${USER}/www/seed.env
         printf "export OS=\"22.04\"\n" >> /home/${USER}/www/seed.env
 		printf "# Set domain name needs to end with a period, and multiple comma seperated (ad1.example.com.,ad2.example.com.)\n" >> /home/${USER}/www/seed.env
-        printf "export DOMAIN=\"ad.cll.cloud.,cll.cloud.,cisco.com.\"\n" >> /home/${USER}/www/seed.env
+        printf "export DOMAIN=\"ad.example.com.,example.com.\"\n" >> /home/${USER}/www/seed.env
     	printf "# Set filesystems to use LVM\n" >> /home/${USER}/www/seed.env
       	printf "export DISK='y'\n" >> /home/${USER}/www/seed.env
 		printf "# Set volume group name\n" >> /home/${USER}/www/seed.env
@@ -532,13 +518,13 @@ if [[ ${ANS} =~ [Y|y][E|e][S|s]|[Y|y] ]];then
 		printf "# Set Location for VMware or VirtualBox\n" >> /home/${USER}/www/seed.env
 		printf "export LOCATION='VM'\n" >> /home/${USER}/www/seed.env
 		printf "# Set timezone ( EST, CST, MNT, PST, Alaska, or HI (Hawaii) )\n" >> /home/${USER}/www/seed.env
-		printf "export timez='PST'\n" >> /home/${USER}/www/seed.env
+		printf "export timez='EST'\n" >> /home/${USER}/www/seed.env
 		printf "# Set system updates\n" >> /home/${USER}/www/seed.env
 		printf "export UPDATES='y'\n" >> /home/${USER}/www/seed.env
 		printf "# Set Home directory location\n" >> /home/${USER}/www/seed.env
 		printf "export HOME_DIR=\"/home/${USER}/www\"\n" >> /home/${USER}/www/seed.env
 		printf "# Set default DNS servers, comma seperated\n" >> /home/${USER}/www/seed.env
-		printf "export DNSservers='172.17.0.53,172.27.0.53,171.70.168.183,8.8.8.8'\n" >> /home/${USER}/www/seed.env
+		printf "export DNSservers='8.8.8.8'\n" >> /home/${USER}/www/seed.env
 		printf "# REQUIRED DEFAULT Packages for VirtualBox\n" >> /home/${USER}/www/seed.env
 		printf "export DEFAULT_PACKAGES_VB=\"resolvconf,vim,curl,wget,openssh-server,perl,build-essential,hwinfo,ifupdown,locate,net-tools\"\n" >> /home/${USER}/www/seed.env 
 		printf "# REQUIRED DEFAULT Packages for VMware\n" >> /home/${USER}/www/seed.env
